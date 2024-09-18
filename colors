@@ -1,0 +1,8 @@
+bar.sh [dotfiles/chadwm/scripts/bar.sh]
+run.sh (wallpaper) [dotfiles/chadwm/scripts/run.sh]
+st [dotfiles/suckless/dwm/st/colors.c]
+rofi [dotfiles/.config/rofi/config.rasi]
+dwm [dotfiles/.config/chadwm/chadwm/config.h]
+eww [dotfiles/.config/eww/eww.scss]
+
+
