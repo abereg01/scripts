@@ -1,0 +1,3 @@
+#!/bin/bash
+COLORSCRIPT_PATH="$HOME/path/to/your/colorscript.sh"
+kitty --class="floating_kitty" -e bash -c "$COLORSCRIPT_PATH; exec bash"
