@@ -1,0 +1,124 @@
+#!/bin/bash
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[*]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[+]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[-]${NC} $1"
+}
+
+# Install NVIDIA drivers and utilities
+install_nvidia() {
+    print_status "Installing NVIDIA drivers and utilities..."
+    
+    sudo pacman -S --needed --noconfirm \
+        nvidia \
+        nvidia-utils \
+        nvidia-settings \
+        libglvnd
+}
+
+# Configure X11 for NVIDIA
+setup_xorg_conf() {
+    print_status "Creating X11 configuration for NVIDIA..."
+    
+    sudo mkdir -p /etc/X11/xorg.conf.d/
+
+    # Create the main nvidia configuration
+    cat << EOF | sudo tee /etc/X11/xorg.conf.d/20-nvidia.conf
+Section "Device"
+    Identifier "NVIDIA Card"
+    Driver "nvidia"
+    Option "NoLogo" "true"
+    Option "UseEdidDpi" "false"
+    Option "DPI" "96 x 96"
+    Option "AccelMethod" "nvidia-drm"
+    Option "UseTimerFd" "on"
+    Option "TripleBuffer" "on"
+    Option "ForceCompositionPipeline" "on"
+    Option "ForceFullCompositionPipeline" "on"
+EndSection
+EOF
+
+    # Create mouse acceleration configuration
+    cat << EOF | sudo tee /etc/X11/xorg.conf.d/50-mouse-acceleration.conf
+Section "InputClass"
+    Identifier "Mouse"
+    Driver "libinput"
+    MatchIsPointer "yes"
+    Option "AccelProfile" "flat"
+    Option "AccelSpeed" "0"
+EndSection
+EOF
+}
+
+# Configure nvidia-settings
+setup_nvidia_settings() {
+    print_status "Configuring NVIDIA settings..."
+    
+    # Create directory if it doesn't exist
+    mkdir -p ~/.nvidia-settings-rc
+    
+    # Configure nvidia-settings
+    nvidia-settings --assign CurrentMetaMode="nvidia-auto-select +0+0 { ForceFullCompositionPipeline = On }"
+}
+
+# Configure kernel parameters
+setup_kernel_params() {
+    print_status "Setting up kernel parameters..."
+    
+    # Add kernel parameters
+    cat << EOF | sudo tee /etc/modprobe.d/nvidia.conf
+options nvidia-drm modeset=1
+options nvidia NVreg_UsePageAttributeTable=1
+options nvidia NVreg_EnablePCIeGen3=1
+EOF
+}
+
+# Update initramfs
+update_initramfs() {
+    print_status "Updating initramfs..."
+    sudo mkinitcpio -P
+}
+
+# Main function
+main() {
+    print_status "Starting NVIDIA optimization setup..."
+    
+    # Install NVIDIA packages
+    install_nvidia
+    
+    # Setup configurations
+    setup_xorg_conf
+    setup_nvidia_settings
+    setup_kernel_params
+    
+    # Update initramfs
+    update_initramfs
+    
+    print_success "NVIDIA setup completed!"
+    print_status "Please add the following to your ~/.xinitrc or ~/.xprofile:"
+    echo "nvidia-settings --load-config-only &"
+    print_status "Please reboot your system to apply all changes."
+}
+
+# Check if script is run as root
+if [ "$(id -u)" = 0 ]; then
+    print_error "This script should not be run as root"
+    exit 1
+fi
+
+# Run the script
+main
