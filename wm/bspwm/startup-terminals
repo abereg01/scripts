@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Function for left monitor layout
+setup_left_monitor() {
+    # Focus DP-4 monitor
+    bspc monitor DP-4 -f
+
+    # Launch first terminal
+    kitty --title "Remote Monitor" ssh DSM01 bottom &
+    sleep 0.5  # Wait for window to spawn
+
+    # Launch second terminal
+    kitty --title "Docker Stats" ssh DSM01 "docker service ls --watch" &
+    sleep 0.5  # Wait for window to spawn
+
+    # Focus the leftmost window
+    bspc node -f west
+
+    # Preselect the bottom split
+    bspc node -p south
+
+    # Launch third terminal
+    kitty --title "Logs" --directory ~/lib/scripts/work ./collect-logs.sh &
+}
+
+# Function for right monitor layout
+setup_right_monitor() {
+    # Focus HDMI-0 monitor
+    bspc monitor HDMI-0 -f
+
+    # Launch first terminal
+    kitty -e nvim -c "lua require('nvim-tree.api').tree.toggle()" &
+    sleep 0.5  # Wait for window to spawn
+
+    # Launch second terminal
+    kitty -e tty-clock -c &
+    sleep 0.5  # Wait for window to spawn
+
+    # Focus the rightmost window
+    bspc node -f east
+
+    # Preselect the bottom split
+    bspc node -p south
+
+    # Launch third terminal
+    kitty &
+    sleep 0.5
+
+    bspc node -f west
+    
+    bspc node -p west
+
+    kitty &
+}
+
+# Wait a bit for bspwm to fully initialize
+sleep 0.5
+
+# Run layouts on respective monitors
+setup_left_monitor
+sleep 0.5  # Wait between monitor setups
+setup_right_monitor

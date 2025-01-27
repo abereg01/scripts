@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# dcon - Docker Container Selector
+# Place this script in ~/bin/dcon and make it executable (chmod +x ~/bin/dcon)
+
+CONFIG_FILE="$HOME/lib/work/config.json"
+
+# Check if config file exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: Config file not found at $CONFIG_FILE"
+    exit 1
+fi
+
+# Get server list from config
+servers=$(jq -r '.docker_servers | to_entries[] | "\(.key)|\(.value.ip)|\(.value.user)"' "$CONFIG_FILE")
+
+# Select server using fzf
+selected_server=$(echo "$servers" | \
+    awk -F'|' '{printf "%-15s %s\n", $1, $2}' | \
+    fzf --prompt="Select server: " --header="ENV            IP")
+
+if [ -z "$selected_server" ]; then
+    exit 0
+fi
+
+# Extract server details
+server_name=$(echo "$selected_server" | awk '{print $1}')
+server_ip=$(echo "$servers" | grep "^$server_name|" | cut -d'|' -f2)
+server_user=$(echo "$servers" | grep "^$server_name|" | cut -d'|' -f3)
+ssh_key=$(jq -r '.ssh_key' "$CONFIG_FILE")
+
+# Get container list from selected server
+containers=$(ssh -i "$ssh_key" "$server_user@$server_ip" "docker ps --format '{{.Names}}\t{{.Status}}\t{{.Image}}'")
+
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to connect to server"
+    exit 1
+fi
+
+# Select container using fzf
+selected_container=$(echo "$containers" | \
+    column -t -s $'\t' | \
+    fzf --prompt="Select container: " --header="NAME                STATUS              IMAGE")
+
+if [ -z "$selected_container" ]; then
+    exit 0
+fi
+
+container_name=$(echo "$selected_container" | awk '{print $1}')
+
+# Connect to the container
+echo "Connecting to $container_name on $server_name..."
+ssh -i "$ssh_key" -t "$server_user@$server_ip" "docker exec -it $container_name bash"

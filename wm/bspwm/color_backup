@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+
+# Constants
+COLOR_DIR="$HOME/dotfiles/theme/colors"
+CONFIG_DIR="$HOME/.config"
+ROFI_COMMAND="rofi -dmenu -p Colors"
+
+# Function to list available color schemes
+list_colorschemes() {
+    find "$COLOR_DIR" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | sort
+}
+
+# Function to select color scheme using Rofi
+select_color() {
+    list_colorschemes | $ROFI_COMMAND
+}
+
+# Select color scheme
+color=$(select_color)
+
+# Exit if no color scheme was selected
+[[ -z "$color" ]] && exit 0
+
+# Check if the selected color scheme exists
+[[ -d "$COLOR_DIR/$color" ]] || { echo "Invalid color scheme: $color"; exit 1; }
+
+# Function to read color values from .conf file
+read_color_values() {
+    local conf_file="$COLOR_DIR/$color/$color.conf"
+    if [[ ! -f "$conf_file" ]]; then
+        echo "Color configuration file not found: $conf_file"
+        exit 1
+    fi
+
+    # Read color values
+    background=$(grep '^background\b' "$conf_file" | awk '{print $2}')
+    foreground=$(grep '^foreground\b' "$conf_file" | awk '{print $2}')
+    color0=$(grep '^color0\b' "$conf_file" | awk '{print $2}')  # black
+    color1=$(grep '^color1\b' "$conf_file" | awk '{print $2}')  # red
+    color2=$(grep '^color2\b' "$conf_file" | awk '{print $2}')  # green
+    color3=$(grep '^color3\b' "$conf_file" | awk '{print $2}')  # yellow
+    color4=$(grep '^color4\b' "$conf_file" | awk '{print $2}')  # blue
+    color5=$(grep '^color5\b' "$conf_file" | awk '{print $2}')  # magenta
+    color6=$(grep '^color6\b' "$conf_file" | awk '{print $2}')  # cyan
+    color7=$(grep '^color7\b' "$conf_file" | awk '{print $2}')  # white
+}
+# Call the function to read color values
+read_color_values
+
+# Function to generate feh background configuration
+generate_fehbg() {
+    echo "feh --no-fehbg --bg-fill $COLOR_DIR/$color/wall/" > "$HOME/.fehbg"
+    chmod 755 "$HOME/.fehbg"
+}
+
+lockscreen() {
+    echo "Updating lockscreen..."
+    betterlockscreen -u "$COLOR_DIR/$color/wall"
+}
+
+# Function to update terminal colors
+update_terminal_colors() {
+    cp "$COLOR_DIR/$color/$color.conf" "$CONFIG_DIR/kitty/theme.conf"
+    killall -SIGUSR1 kitty
+}
+
+# Function to update UI colors
+update_ui_colors() {
+    # Update BSPWM colors
+    sed -i -e "s/bspc config normal_border_color .*/bspc config normal_border_color \"$color0\"/g" \
+           -e "s/bspc config focused_border_color .*/bspc config focused_border_color \"$color4\"/g" \
+           "$CONFIG_DIR/bspwm/config"
+
+#    # Update Rofi colors
+#    sed -i -e "s/background: .*/background: $background;/g" \
+#           -e "s/foreground: .*/foreground: $foreground;/g" \
+#           -e "s/foreground-alt: .*/foreground-alt: $color4;/g" \
+#           "$CONFIG_DIR/rofi/colors.rasi"
+
+    # Update Polybar
+    sed -i -e "s/background = .*/background = $background/g" \
+        -i -e "s/foreground = .*/foreground = $foreground/g" \
+        -i -e "s/accent = .*/accent = $color4/g" \
+        -i -e "s/alert = .*/alert = $color1/g" \
+        -i -e "s/red = .*/red = $color1/g" \
+        -i -e "s/cyan = .*/cyan = $color6/g" \
+        -i -e "s/blue = .*/blue = $color4/g" \
+        -i -e "s/magenta = .*/magenta = $color5/g" \
+        -i -e "s/yellow = .*/yellow = $color3/g" \
+        -i -e "s/green = .*/green = $color2/g" \
+        "$HOME/.config/polybar/colors.ini"
+
+    # Update Dunst colors
+    sed -i -e "s/background = .*/background = \"$background\"/g" \
+           -e "s/foreground = .*/foreground = \"$foreground\"/g" \
+           "$CONFIG_DIR/dunst/dunstrc"
+
+    # Update BSPWM user options
+    sed -i -e "s/bsp_color=.*/bsp_color=$color/g" "$CONFIG_DIR/bspwm/config"
+
+    #Update BAT theme
+    sed -i "s/--theme=\"[^\"]*\"/--theme=\"$color\"/" \
+           "$CONFIG_DIR/bat/bat.conf"
+}
+
+generate_colors_fzf() {
+    local fish_colors_file="$HOME/.config/fish/custom/fzfcolors.fish"
+    echo "# Color configuration" > "$fish_colors_file"
+    echo "set -g color_background $background" >> "$fish_colors_file"
+    echo "set -g color_foreground $foreground" >> "$fish_colors_file"
+    echo "set -g color_black $color0" >> "$fish_colors_file"
+    echo "set -g color_red $color1" >> "$fish_colors_file"
+    echo "set -g color_green $color2" >> "$fish_colors_file"
+    echo "set -g color_yellow $color3" >> "$fish_colors_file"
+    echo "set -g color_blue $color4" >> "$fish_colors_file"
+    echo "set -g color_magenta $color5" >> "$fish_colors_file"
+    echo "set -g color_cyan $color6" >> "$fish_colors_file"
+    echo "set -g color_white $color7" >> "$fish_colors_file"
+    echo "" >> "$fish_colors_file"
+    echo "# Additional color mappings for fzf" >> "$fish_colors_file"
+    echo "set -g color_fg \$color_foreground" >> "$fish_colors_file"
+    echo "set -g color_bg \$color_background" >> "$fish_colors_file"
+    echo "set -g color_hl \$color_yellow" >> "$fish_colors_file"
+    echo "set -g color_fg_plus \$color_white" >> "$fish_colors_file"
+    echo "set -g color_bg_plus \$color_black" >> "$fish_colors_file"
+    echo "set -g color_hl_plus \$color_yellow" >> "$fish_colors_file"
+    echo "set -g color_border \$color_black" >> "$fish_colors_file"
+    echo "set -g color_header \$color_blue" >> "$fish_colors_file"
+    echo "set -g color_gutter \$color_background" >> "$fish_colors_file"
+    echo "set -g color_spinner \$color_yellow" >> "$fish_colors_file"
+    echo "set -g color_info \$color_cyan" >> "$fish_colors_file"
+    echo "set -g color_pointer \$color_magenta" >> "$fish_colors_file"
+    echo "set -g color_marker \$color_red" >> "$fish_colors_file"
+    echo "set -g color_prompt \$color_foreground" >> "$fish_colors_file"
+}
+
+# Function to restart necessary services
+restart_services() {
+    bspc wm -r
+    pkill -USR1 -x sxhkd
+#    pkill -USR1 -x polybar
+    sleep 1
+}
+
+# Main function
+main() {
+    generate_fehbg
+    #lockscreen
+    update_terminal_colors
+    update_ui_colors
+    generate_colors_fzf
+    restart_services
+}
+
+# Run the main function
+main
+exit 0
