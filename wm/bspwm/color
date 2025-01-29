@@ -9,12 +9,22 @@ list_colorschemes() {
     find "$COLOR_DIR" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | sort
 }
 
-# Function to select color scheme using bemenu
+# Function to select color scheme using a floating terminal with fzf
 select_color() {
-    list_colorschemes | bemenu -p "Colors" --fn "monospace 12" \
-    --nb "$background" --nf "$foreground" \
-    --ab "$background" --af "$foreground" \
-    --hb "$color4" --hf "$background"
+    kitty --name float --class float \
+        -o remember_window_size=no \
+        -o initial_window_width=100c \
+        -o initial_window_height=20c \
+        -e fish -c "find \"$COLOR_DIR\" -mindepth 1 -maxdepth 1 -type d -printf \"%f\n\" | sort | \
+        fzf --header=\"Select Theme\" --preview=\"$HOME/lib/scripts/wm/bspwm/preview_theme.sh {}\" \
+        --preview-window=top:8 > /tmp/selected_theme.txt" 2>/dev/null
+
+    # Read the selected theme from the temporary file
+    if [ -f /tmp/selected_theme.txt ]; then
+        selected=$(cat /tmp/selected_theme.txt)
+        rm /tmp/selected_theme.txt
+        echo "$selected"
+    fi
 }
 
 # Select color scheme
@@ -57,14 +67,32 @@ generate_fehbg() {
 }
 
 lockscreen() {
-    echo "Updating lockscreen..."
-    betterlockscreen -u "$COLOR_DIR/$color/wall"
+    # Check if cached images exist for this theme
+    if ! ls "$HOME/.cache/betterlockscreen/$color"* >/dev/null 2>&1; then
+        echo "Updating lockscreen..."
+        betterlockscreen -u "$COLOR_DIR/$color/wall"
+    fi
 }
 
 # Function to update terminal colors
 update_terminal_colors() {
     cp "$COLOR_DIR/$color/$color.conf" "$CONFIG_DIR/kitty/theme.conf"
     killall -SIGUSR1 kitty
+}
+
+# Function to map theme names for NvChad
+get_nvchad_theme() {
+    case "$1" in
+        "dracula")
+            echo "chadracula"
+            ;;
+        "rosepine-moon")
+            echo "rosepine"
+            ;;
+        *)
+            echo "$1"
+            ;;
+    esac
 }
 
 # Function to update UI colors
@@ -92,13 +120,11 @@ update_ui_colors() {
            -e "s/foreground = .*/foreground = \"$foreground\"/g" \
            "$CONFIG_DIR/dunst/dunstrc"
 
-    # Update ly colors
-    sed -i -e "s/^bg=.*/bg=$background/g" \
-           -e "s/^fg=.*/fg=$foreground/g" \
-           -e "s/^active_fg=.*/active_fg=$color4/g" \
-           "/etc/ly/config.ini"
-
-    # Update btop colors
+    # Update btop colors and config
+    # Update theme setting in btop.conf
+    sed -i "s/color_theme = \".*\"/color_theme = \"$color\"/" "$CONFIG_DIR/btop/btop.conf"
+    
+    # Create theme file
     cat > "$CONFIG_DIR/btop/themes/$color.theme" << EOF
 theme[main_bg]=$background
 theme[main_fg]=$foreground
@@ -123,10 +149,30 @@ ex $color2
 or $color1
 EOF
 
+    # Update bemenu colors
+    sed -i -e "s/BG=\"[^\"]*\"/BG=\"$background\"/g" \
+           -e "s/FG=\"[^\"]*\"/FG=\"$foreground\"/g" \
+           -e "s/HIGHLIGHT=\"[^\"]*\"/HIGHLIGHT=\"$color4\"/g" \
+           "$HOME/dotfiles/configs/bemenu/bmenu"
+
+    # Update NvChad theme with mapped name
+    nvchad_theme=$(get_nvchad_theme "$color")
+    sed -i "s/theme = \"[^\"]*\"/theme = \"$nvchad_theme\"/" \
+           "$HOME/dotfiles/configs/nvim/lua/chadrc.lua"
+    
+    # Try to update running NvChad instance
+    NVIM_SERVER="$HOME/.cache/nvim/nvchad_pipe"
+    if [ -S "$NVIM_SERVER" ]; then
+        nvim --server "$NVIM_SERVER" --remote-send "<cmd>lua require('base46').load_all_highlights(); vim.cmd('redraw!')<CR>"
+    else
+        # Fallback to headless update if no server running
+        nvim --headless +"lua require('base46').load_all_highlights()" +q
+    fi
+
     # Update BSPWM user options
     sed -i -e "s/bsp_color=.*/bsp_color=$color/g" "$CONFIG_DIR/bspwm/config"
 
-    #Update BAT theme
+    # Update BAT theme
     sed -i "s/--theme=\"[^\"]*\"/--theme=\"$color\"/" \
            "$CONFIG_DIR/bat/bat.conf"
 }
@@ -162,6 +208,18 @@ generate_colors_fzf() {
     echo "set -g color_prompt \$color_foreground" >> "$fish_colors_file"
 }
 
+# Function to update lockscreen
+lockscreen() {
+    # Only update if current blur wallpaper doesn't match our theme wallpaper
+    current_wallpaper=$(readlink -f "$COLOR_DIR/$color/wall")
+    cache_wallpaper=$(grep -o '".*"' "$HOME/.cache/betterlockscreen/wall_cache.txt" 2>/dev/null | tr -d '"')
+    
+    if [ "$current_wallpaper" != "$cache_wallpaper" ]; then
+        echo "Updating lockscreen..."
+        betterlockscreen -u "$COLOR_DIR/$color/wall" --fx blur
+    fi
+}
+
 # Function to restart necessary services
 restart_services() {
     bspc wm -r
@@ -176,6 +234,9 @@ main() {
     update_ui_colors
     generate_colors_fzf
     restart_services
+    
+    # Update lockscreen in background after theme change
+    "$HOME/lib/scripts/wm/bspwm/update_lockscreen.sh" &
 }
 
 # Run the main function
