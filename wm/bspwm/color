@@ -86,8 +86,8 @@ get_nvchad_theme() {
         "dracula")
             echo "chadracula"
             ;;
-        "rosepine-moon")
-            echo "rosepine"
+        "gruvbox")
+            echo "gruvchad"
             ;;
         *)
             echo "$1"
