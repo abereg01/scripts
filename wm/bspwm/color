@@ -175,6 +175,48 @@ EOF
     # Update BAT theme
     sed -i "s/--theme=\"[^\"]*\"/--theme=\"$color\"/" \
            "$CONFIG_DIR/bat/bat.conf"
+           
+    # Update Zathura colors
+    cat > "$HOME/dotfiles/configs/zathura/zathurarc" << EOF
+# Zathura configuration file
+set notification-error-bg "$background"
+set notification-error-fg "$color1"
+set notification-warning-bg "$background"
+set notification-warning-fg "$color3"
+set notification-bg "$background"
+set notification-fg "$foreground"
+
+set completion-group-bg "$background"
+set completion-group-fg "$color4"
+set completion-bg "$background"
+set completion-fg "$foreground"
+set completion-highlight-bg "$color4"
+set completion-highlight-fg "$background"
+
+set index-bg "$background"
+set index-fg "$foreground"
+set index-active-bg "$color4"
+set index-active-fg "$background"
+
+set inputbar-bg "$background"
+set inputbar-fg "$foreground"
+set statusbar-bg "$background"
+set statusbar-fg "$foreground"
+
+set highlight-color "$color4"
+set highlight-active-color "$color6"
+
+set default-bg "$background"
+set default-fg "$foreground"
+
+set render-loading true
+set render-loading-fg "$foreground"
+set render-loading-bg "$background"
+
+set recolor true
+set recolor-lightcolor "$background"
+set recolor-darkcolor "$foreground"
+EOF
 }
 
 generate_colors_fzf() {
