@@ -79,8 +79,11 @@ case "$1" in
     "backup")
         track_packages
         sync_ssh
+        sync_system_files
         ;;
     "restore")
+        # Restore system files first (includes package list)
+        restore_system_files
         # Restore SSH
         rclone sync "nextcloud:abe/linux/system-backups/ssh/" "$HOME/.ssh/"
         # Install missing packages
