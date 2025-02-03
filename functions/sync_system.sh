@@ -38,10 +38,24 @@ track_packages() {
             rm "$temp_file"
         fi
     fi
+
+    # Sync the package list to Nextcloud
+    echo "Syncing package list to Nextcloud..."
+    rclone sync "$SYNC_DIR/installed_packages.txt" "nextcloud:abe/linux/system-backups/packages/"
 }
 
 # Function to install missing packages
 install_packages() {
+    # First, ensure we have the latest package list
+    echo "Retrieving package list from Nextcloud..."
+    mkdir -p "$SYNC_DIR"
+    rclone sync "nextcloud:abe/linux/system-backups/packages/" "$SYNC_DIR/"
+
+    if [ ! -f "$SYNC_DIR/installed_packages.txt" ]; then
+        echo "No package list found!"
+        return 1
+    fi
+
     while read -r package; do
         if ! pacman -Qi "$package" >/dev/null 2>&1; then
             echo "Installing missing package: $package"
@@ -79,11 +93,8 @@ case "$1" in
     "backup")
         track_packages
         sync_ssh
-        sync_system_files
         ;;
     "restore")
-        # Restore system files first (includes package list)
-        restore_system_files
         # Restore SSH
         rclone sync "nextcloud:abe/linux/system-backups/ssh/" "$HOME/.ssh/"
         # Install missing packages
