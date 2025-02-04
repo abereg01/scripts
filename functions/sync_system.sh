@@ -21,10 +21,10 @@ track_packages() {
     # Ensure SYNC_DIR exists
     mkdir -p "$SYNC_DIR"
     
-    # Get current packages
+    # Get current packages (only names, no versions)
     echo "Generating package list..."
-    pacman -Qe > "$temp_file"
-    pacman -Qm >> "$temp_file"
+    pacman -Qqe | grep -vx "$(pacman -Qqm)" > "$temp_file"  # Explicitly installed non-AUR packages
+    pacman -Qqm >> "$temp_file"                             # AUR packages
     
     if [ ! -f "$SYNC_DIR/installed_packages.txt" ]; then
         echo "Creating initial package list..."
