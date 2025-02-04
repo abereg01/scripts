@@ -56,8 +56,18 @@ install_packages() {
         return 1
     fi
 
+    # Make sure yay is installed
+    if ! command -v yay &> /dev/null; then
+        echo "Installing yay first..."
+        git clone https://aur.archlinux.org/yay.git /tmp/yay
+        cd /tmp/yay || exit
+        makepkg -si --noconfirm
+        cd - || exit
+    fi
+
+    # Install packages
     while read -r package; do
-        if ! pacman -Qi "$package" >/dev/null 2>&1; then
+        if ! yay -Qi "$package" &> /dev/null; then
             echo "Installing missing package: $package"
             yay -S --noconfirm "$package"
         fi
