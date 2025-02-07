@@ -6,11 +6,11 @@ setup_left_monitor() {
     bspc monitor DP-4 -f
 
     # Launch first terminal
-    kitty --title "Remote Monitor" ssh DSM01 bottom &
+    kitty --title "Remote Monitor" ssh DSM01 btm &
     sleep 0.5  # Wait for window to spawn
 
     # Launch second terminal
-    kitty --title "Docker Stats" ssh DSM01 "docker service ls --watch" &
+    kitty --title "Docker Terminal" ssh DSM01 &
     sleep 0.5  # Wait for window to spawn
 
     # Focus the leftmost window
@@ -26,7 +26,7 @@ setup_left_monitor() {
 # Function for right monitor layout
 setup_right_monitor() {
     # Focus HDMI-0 monitor
-    bspc monitor HDMI-0 -f
+    bspc monitor DP-2 -f
 
     # Launch first terminal
     kitty -e nvim -c "lua require('nvim-tree.api').tree.toggle()" &
