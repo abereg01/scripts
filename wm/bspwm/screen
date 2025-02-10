@@ -1,0 +1,43 @@
+setup_top_monitor() {
+    # Focus DP-4 monitor
+    bspc monitor DP-2 -f
+
+    # Launch all terminals first to create layout
+    kitty --title "Terminal 1" &
+    sleep 0.5
+    
+    kitty --title "Terminal 2" &
+    sleep 0.5
+    
+    # Focus the leftmost window and split
+    bspc node -f west
+    bspc node -p south
+    
+    kitty --title "Ncspot" ncspot &
+    sleep 0.5
+    
+    kitty --title "Cava" cava &
+    sleep 0.5
+    
+    kitty --title "Clock" tty-clock -c -C 1 &
+    sleep 0.5
+
+    # Wait for all windows to spawn
+    sleep 1
+
+    # Now resize all windows to desired sizes
+    # First, store window IDs
+    local term1_id=$(xdotool search --name "Terminal 1" | head -n 1)
+    local term2_id=$(xdotool search --name "Terminal 2" | head -n 1)
+    local ncspot_id=$(xdotool search --name "Ncspot" | head -n 1)
+    local cava_id=$(xdotool search --name "Cava" | head -n 1)
+    local clock_id=$(xdotool search --name "Clock" | head -n 1)
+
+    # Resize each window using xdotool
+    xdotool windowsize $term1_id 154 69
+    xdotool windowsize $term2_id 114 69
+    xdotool windowsize $ncspot_id 110 55
+    xdotool windowsize $cava_id 54 13
+    xdotool windowsize $clock_id 54 13
+}
+setup_top_monitor

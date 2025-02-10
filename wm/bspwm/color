@@ -250,6 +250,42 @@ generate_colors_fzf() {
     echo "set -g color_prompt \$color_foreground" >> "$fish_colors_file"
 }
 
+update_cava_colors() {
+    local cava_config="$CONFIG_DIR/cava/config"
+    
+    # Create gradient colors from the theme colors
+    # We'll use a combination of blue, cyan, and foreground colors for the gradient
+    local gradient_colors=(
+        "$color4"  # blue
+        "$color4"  # blue (repeated for smooth transition)
+        "$color6"  # cyan
+        "$color7"  # white/foreground
+    )
+    
+    # Ensure the color format is correct (convert from RGB to hex if needed)
+    for i in "${!gradient_colors[@]}"; do
+        local color="${gradient_colors[$i]}"
+        # Remove leading '#' if present and add it back
+        color="#${color#\#}"
+        gradient_colors[$i]="$color"
+    done
+
+    # First, ensure gradient is enabled
+    sed -i 's/^gradient = .*/gradient = 1/' "$cava_config"
+    sed -i 's/^gradient_count = .*/gradient_count = 4/' "$cava_config"
+    
+    # Then update each color line precisely
+    sed -i "s/^gradient_color_1 = .*$/gradient_color_1 = '${gradient_colors[0]}'/" "$cava_config"
+    sed -i "s/^gradient_color_2 = .*$/gradient_color_2 = '${gradient_colors[1]}'/" "$cava_config"
+    sed -i "s/^gradient_color_3 = .*$/gradient_color_3 = '${gradient_colors[2]}'/" "$cava_config"
+    sed -i "s/^gradient_color_4 = .*$/gradient_color_4 = '${gradient_colors[3]}'/" "$cava_config"
+   
+    # Restart cava if it's running
+    if pgrep -x "cava" >/dev/null; then
+        pkill -USR1 cava
+    fi
+}
+
 # Function to update lockscreen
 lockscreen() {
     # Only update if current blur wallpaper doesn't match our theme wallpaper
@@ -275,6 +311,7 @@ main() {
     update_terminal_colors
     update_ui_colors
     generate_colors_fzf
+    update_cava_colors
     restart_services
     
     # Update lockscreen in background after theme change
