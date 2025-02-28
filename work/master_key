@@ -1,0 +1,4 @@
+openssl rand -hex 20 | tr '0123456789abcdef' 'ABCDEFGHIJKLMNOP'
+
+ykman oath accounts add linux-master "xx"
+

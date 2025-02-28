@@ -1,0 +1,9 @@
+magick input.jpg -brightness-contrast 10x30 enhanced.jpg
+jp2a --color --width=80 name_file.jpg > art.txt
+
+
+
+
+
+
+ffmpeg -i input.jpg -vf eq=contrast=1.5:brightness=0.1 enhanced.jpg
