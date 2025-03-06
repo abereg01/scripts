@@ -1,0 +1,8 @@
+ttf-cascadia-code-nerd
+ttf-firacode-nerd
+ttf-firamono-nerd
+ttf-hack-nerd
+ttf-iosevka-nerd
+ttf-jetbrains-mono-nerd
+ttf-mplus-nerd
+nerd-fonts-sf-mono
